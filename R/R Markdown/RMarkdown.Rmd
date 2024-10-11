@@ -1,0 +1,327 @@
+---
+title: "RMarkdown"
+author: "Jeffrey Appiagyei"
+date: " Fall 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+RMarkdown provides an authoring framework that allows us to write reproducible documents.
+
+- Dynamically generated from relatively free form text input and code.
+
+- Works with R or Python.
+
+- Many possible outputs.
+
+It can be thought of as a modern day lab notebook that seamlessly weaves together your written conclusions as well as _how_ you obtained them.
+
+```{r}
+print("Code and output wow!")
+```
+
+## The `.Rmd` RMarkdown File
+
+An R Markdown file is just a specifically structured text file with the extension `.Rmd`.  This extension allows RStudio a rich set of options for parsing and highlighting the file to ease development.
+
+![Figure Text](RMDfile.png){width=75%}
+
+There are three key portions of the file:
+
+1. The _header_ which is surrounded by `---` marks.
+  - This is where we can define title, subtitle, author
+  - We can also list the type of output we would like in the header by filling out the `output` field.
+
+2. Chunks of code that are surrounded with triple "tick" marks.
+
+3. Standard text which obeys typical Markdown formatting
+  - One or Multiple Octothorpes(#) to create sections/subsections
+  - Underscores or Stars (`_`/`*`) for surrounding words for emphasis:
+    - Single creates *italics* and double creates __bold__.
+  
+## Running Code
+
+To Run code we can _either_
+
+1. Click the "play" button in a code chunk to run it, or click the adjacent icon to run all chunks **before** the current one.
+
+![](PlayButton_B4.png)
+
+2. Click the _knit_ button on the top of RStudio to run all code and weave it into the text.
+
+![](knit.png)
+
+The former will allow us to "preview" the output of our code in RStudio and the latter compiles our `.Rmd` file to a `.md` file, which is then further processed by other tools to create whatever final output format we requested.
+
+## Other Types of Content
+
+We can also easily embed other types of data as well.
+
+- Simple tables can be created by "drawing" them with text.  This is far easier than in LaTeX.
+
+Col1   |  Col2
+:-----:|:-----:
+ 1     |  4
+ 2     |  5
+ 3     |  6
+
+- Links can be included with the syntax `[link](www.google.com)`, becoming [link](www.google.com)
+
+- Images can be included `![Figure Text](<file>){<options>}`
+
+- We can embed LaTeX expressions both inline and in equation format by enclosing it in either single or double `$` characters. For example `$\mu$` will render $\mu$, and 
+
+```
+$$
+f(x \vert \mu, \sigma) \propto \exp\left(- \frac{(x - \mu)^2}{2\sigma^2}\right)
+$$
+```
+Renders as
+
+$$
+f(x \vert \mu, \sigma) \propto \exp\left(- \frac{(x - \mu)^2}{2\sigma^2}\right)
+$$
+
+## Code Chunks in Detail
+
+As mentioned, _code chunks_ are introduced into the document using triple "tick" marks `.  We then specify
+
+1. The language (`r` or `python`)
+  - `python` code will run within a `reticulate` REPL.
+
+2. (optionally) A name for the chunk
+
+3. options, most of which are logicals (`TRUE`/`FALSE`). Some of these can be toggled from the "gear" icon in the chunk as seen in RStudio.
+
+  - `include`: Code will always run, but should the code/output be _displayed_ in the document?
+  - `eval`: Should the code be evaluated at all?
+  - `echo`: This can squelch code from being displayed, but will still display _results_. given that `include = TRUE`.
+  - `message` and `warning`: Should messages/warnings be displayed.
+  - `error`: If switched on, code errors will be captured and displayed, and code will continue to execute.
+  - `cache`: Very useful for long running code chunks, after the code executes once, objects with results are stored in the folder our `.Rmd` file lives in.  On subsequent executions, results will be read from these objects _instead of_ the code executing again.  
+    - If the code is changed, it will be executed again to refresh the results.
+    - Can cause problems if cached chunks depend on upstream chunks
+      - Should use the `dependson = <chunk label>` where `<chunk label>` is a character vector of all the chunks that the cached chunk depends on.
+
+## Chunk Demonstrations
+
+### Basic Chunk Examples
+
+A basic chunk with default options will show the code and the output.
+```{r table demo}
+data.frame(x = 1:4, xsq = (1:4)^2)
+```
+
+Adding the option `echo = FALSE` will keep the output but remove the code from being displayed.
+```{r, echo = FALSE}
+data.frame(x = 1:4, xsq = (1:4)^2)
+```
+
+Say you wanted to display code but _not_ evaluate it, we could say `eval = FALSE`
+```{r, eval = FALSE}
+data.frame(x = 1:4, xsq = (1:4)^2)
+```
+
+If we want to have (invisible) background code that will fuel a visible code chunk, we can hide it with `include=FALSE`.
+```{r, include = FALSE}
+Some_Data <- head(iris, 10)
+```
+
+We can then import any object into a visible code chunk.  In this example, we can see that the `kable()` function in the `knitr` library can be easily used to render nicely formatted tables.
+
+```{r, echo=FALSE}
+knitr::kable(Some_Data)
+```
+
+### Printing Errors
+
+Sometimes when doing demonstrations we do not want an error in code to break the entire compilation process, we can use the `error = TRUE` option.
+
+```{r, error = TRUE}
+"string"^2
+```
+
+### Caching
+
+As previously mentioned, every time we knit an RMarkdown document the R session starts with a "blank slate."  This restarting process is great for ensuring our documents are reproducible, but if one chunk is very computationally demanding it can make our document take very long to build.  This is where caching comes in.  Take the following
+
+
+```{r ReadData, cache = TRUE, message=FALSE}
+library(randomForest)
+College <- read.csv("/home/john/TodaysScripts/College.csv")[,-1]
+College$NewVar <- sqrt(College$Top25perc)
+```
+
+We can then fit a model that takes ~5s to run.  Each time we knit the script, this chunk will run, unless we use the `cache` option.  With the below we will also explore the following options for more advanced control over _when_ to rerun the code.
+
+  - `dependson="ReadData"` with `cache = TRUE` will rerun the chunk if anything in the above `ReadData` chunk changes.
+  
+  - `cache.extra = file.info("/home/john/TodaysScripts/College.csv")` with `cache = TRUE` will rerun the chunk if `College.csv` is modified in any way.
+
+```{r RunModel, cache = TRUE, dependson="ReadData"}
+RF_mod <- randomForest(x = College[,-10], y = College$Room.Board, ntree = 2000)
+```
+
+```{r Summary}
+RF_mod$ntree
+```
+
+## Inline Code
+
+We can also seamlessly integrate output using tickmarks with an `r` inside.  For example, in the above example we use the College dataset, which has `r nrow(College)` rows and `r ncol(College)` columns.  The random forest had `r RF_mod$ntree` trees and `r RF_mod$mtry` variables were used for each tree.
+
+## Running Python Code
+
+Python can be easily integrated as well, we just create the cell with the `python` tag.  This will load a `reticulate` REPL session which will behave in the standard ways
+
+```{python}
+import numpy as np
+NumPyArray = np.ones(shape=(4,14))
+print(NumPyArray)
+```
+
+This can then be accessed from R using `py$`
+```{r}
+library(reticulate)
+py$NumPyArray
+```
+
+\newpage
+# A Real Example
+
+Graduate instructors often need to write exams which have very similar analytical structures with different contexts/data.
+
+Take the following example STAT 3500 question that could exist semester over semester in similar forms.  As we will see, we can adjust some simple parameters in the beginning and obtain an entirely new question along with a dynamically generated answer key.
+
+```{r, include = FALSE}
+library(knitr)
+library(kableExtra)
+Key = TRUE
+set.seed(10)
+```
+
+## A Dynamically Generated Question
+
+A total of 16 cats were randomly put into four groups of different noise levels.  One group of cats was in a quiet room, another group was in a room with soft music, another group was in a room with loud rock music, and another group was placed in a room a safe distance from an underground nuclear test site on detonation day. It is of interest to determine if the average number of hours slept by cats depends on their environment. 
+
+```{r, include = FALSE}
+GroupNames <- c("Quiet","Soft Music","Loud Music","Nuclear Detonation site")
+Means <- c(19, 12, 18, 22)
+Reps <- 4
+s <- 3
+
+X <- data.frame(dummy = 1:Reps)
+rownames(X) <- NULL
+
+for(g in 1:length(Means)){
+  X[,GroupNames[g]] <- round(
+                         rnorm(Reps, mean = Means[g], sd = s),
+                        digits = 0)
+}
+X <- X[,-1]
+Xmat <- as.matrix(X)
+xBar_i <- round(colMeans(X),3)
+xBar <- round( mean(xBar_i), 3)
+```
+
+```{r, echo = FALSE}
+X |>
+  kable() |> 
+  kable_styling(bootstrap_options = "striped",
+                full_width = F,
+                position = "center")
+```
+
+Also, we have $\bar{x}_1=`r xBar_i[1]`$, $\bar{x}_2=`r xBar_i[2]`$, $\bar{x}_3=`r xBar_i[3]`$, $\bar{x}_4=`r xBar_i[4]`$, and $\bar{x}=`r xBar`$.  Where groups 1, 2, 3, and 4 correspond to `r colnames(X)`.
+
+Complete the ANOVA table.  Be sure to show work.
+
+\Large
+```{r, echo = FALSE}
+aov_val <- function(KeyInd,val){
+  if(KeyInd){
+    return(as.character(val))
+  }else{
+      return(rep("   ",length(val)))
+    }
+}
+
+k <- ncol(X)
+n <- prod(dim(X))
+SST <- sum(Reps*(xBar_i-xBar)^2)
+df_T <- k - 1
+CM <- round(length(Xmat)*mean(Xmat)^2, 3)
+SSTO <- round(sum(Xmat^2) - CM, 3)
+df_TO <- n - 1
+SSE <- SSTO - SST
+df_E <- n - k
+
+MST <- round(SST/df_T, 3)
+MSE <- round(SSE/df_E, 3)
+Fval <- round(MST/MSE, 3)
+
+ANOVA_table <- data.frame(Source = c("TRT", "ERR","TOTAL"),
+                          DF = aov_val(Key,c(df_T, df_E, df_TO)),
+                          SS = aov_val(Key,c(SST, SSE, SSTO)),
+                          MS = c(aov_val(Key,c(MST, MSE))," X "),
+                          F = c(aov_val(Key,Fval)," X ", " X "))
+ANOVA_table |> 
+  kable() |> 
+  kable_classic(full_width = T, position = "center")
+```
+\normalsize
+
+`r if(Key){paste0("- $k=", ncol(X), "$")}`
+`r if(Key){paste0("- $n=", prod(dim(X)), "$")}`
+`r if(Key){paste0("- $df_T=k-1=", ncol(X) - 1, "$")}`
+`r if(Key){paste0("- $df_E=n-k=", prod(dim(X)) - ncol(X), "$")}`
+`r if(Key){paste0("- $df_{TO}=n-1=", prod(dim(X)) - 1, "$")}`
+
+```{r, echo = FALSE, results = 'asis'} 
+ if(Key){
+  cat("- $SST = \\sum\\limits_{i=1}^k n_i \\left(\\bar{x}_i - \\bar{x}\\right)^2 =","\\\\",
+    paste(Reps,"(",xBar_i[1:length(Means)],"-",xBar,")^2",collapse=" + "),"=",
+    SST,"$", sep = "")}
+```
+
+```{r, echo = FALSE, results = 'asis'} 
+ if(Key){
+  cat("- $SSTO = \\sum\\limits_{i=1}^k \\sum\\limits_{j=1}^{n_i} x_{ij} - n\\bar{x}^2"," \\\\ ",
+    paste(Xmat[1:length(Xmat)],"^2",collapse=" + "),"-",CM,"=",
+    SSTO,"$", sep = "")}
+```
+
+```{r, echo = FALSE, results = 'asis'} 
+ if(Key){
+  cat("- $SSE = SSTO - SST"," = ", SSTO, "-", SST,"=",SSE,"$", sep = "")
+   }
+```
+
+```{r, echo = FALSE, results = 'asis'} 
+ if(Key){
+  cat("- $MST = \\frac{SST}{df_T} = \\frac{", SST, "}{", df_T,"}=",MST,"$", sep = "")
+   }
+```
+
+```{r, echo = FALSE, results = 'asis'} 
+ if(Key){
+  cat("- $MSE = \\frac{SSE}{df_E} = \\frac{", SSE, "}{", df_E,"}=",MSE,"$", sep = "")
+   }
+```
+
+```{r, echo = FALSE, results = 'asis'} 
+ if(Key){
+  cat("- $F = \\frac{MST}{MSE} = \\frac{", MST, "}{", MSE,"}=",Fval,"$", sep = "")
+   }
+```
+
+
+
+
+
+
